@@ -1,0 +1,271 @@
+---
+title: "Multiple testing"
+author: "Joshua Loftus"
+date: "4/2/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+## Data generation
+
+Assume
+$$
+z_i \sim N(\mu_i, 1)
+$$
+Our goal is to test $H_{0,i} : \mu_i = 0$ against $H_{A,i} : \mu_i < 0$.
+
+```{r}
+p <- 1000
+threshold <- 1.1*sqrt(2*log(p))
+mu <- c(rep(-threshold, 10), rep(0, p - 10))
+z <- rnorm(p) + mu
+pvalues <- pnorm(z)
+```
+
+
+## Bonferroni-Dunn correction
+
+Control FWER
+
+
+These are less than alpha iff original p-values are less than alpha/n
+
+```{r}
+which(p.adjust(pvalues, method = "bonferroni") < 0.05)
+```
+
+
+## Holm correction
+
+Control FWER
+
+These are less than alpha iff original p-values are less than alpha/n
+
+```{r}
+which(p.adjust(pvalues, method = "holm") < 0.05)
+```
+
+
+## Benjamini-Hochberg correction
+
+Control FDR
+
+These are less than alpha iff original p-values are less than alpha/n
+
+```{r}
+which(p.adjust(pvalues, method = "BH") < 0.05)
+```
+
+## Simulation
+
+### FWER
+
+```{r}
+instance <- function(p, sparsity, threshold) {
+  mu <- c(rep(-threshold, sparsity), rep(0, p - sparsity))
+  z <- rnorm(p) + mu
+  pvalues <- pnorm(z)
+  adj_pvalues <- p.adjust(pvalues, method = "bonferroni")
+  discoveries <- which(adj_pvalues < 0.05)
+  true_discoveries <- sum(discoveries <= sparsity)
+  false_discoveries <- sum(discoveries > sparsity)
+  return(c(true_discoveries, false_discoveries))
+}
+```
+
+```{r}
+mc_sample <- replicate(1000, instance(1000, 10, sqrt(2*log(1000))))
+```
+
+```{r}
+rowMeans(mc_sample)
+```
+
+FWER:
+
+```{r}
+mean(mc_sample[2, ] > 0)
+```
+
+
+### FDR
+
+```{r}
+instance <- function(p, sparsity, threshold) {
+  mu <- c(rep(-threshold, sparsity), rep(0, p - sparsity))
+  z <- rnorm(p) + mu
+  pvalues <- pnorm(z)
+  adj_pvalues <- p.adjust(pvalues, method = "BH")
+  discoveries <- which(adj_pvalues < 0.05)
+  true_discoveries <- sum(discoveries <= sparsity)
+  false_discoveries <- sum(discoveries > sparsity)
+  return(c(true_discoveries, false_discoveries))
+}
+```
+
+```{r}
+mc_sample <- replicate(1000, instance(1000, 10, sqrt(2*log(1000))))
+```
+
+```{r}
+rowMeans(mc_sample)
+```
+
+
+Checking FDR?
+
+```{r}
+mean(mc_sample[2, ]/pmax(colSums(mc_sample), 1))
+```
+
+
+
+## How can we cheat the FDR?
+
+Make the denominator smaller without increasing numerator -- i.e. adding in many true discoveries (known a priori to be true discoveries)
+
+```{r}
+p <- 1000
+threshold <- 1.1*sqrt(2*log(p))
+mu <- c(rep(-threshold, 10), rep(0, p - 10))
+z <- rnorm(p) + mu
+pvalues <- pnorm(z)
+```
+
+
+Control FDR
+
+These are less than alpha iff original p-values are less than alpha/n
+
+```{r}
+pvalues <- c(pvalues, rep(0.00001, 100))
+which(p.adjust(pvalues, method = "BH") < 0.05)
+```
+
+
+## Selective inference for marginal screening
+
+```{r}
+C <- 2
+p <- 10000
+Z <- rnorm(p)
+selected_Z <- selected_Z <- data.frame(Z = Z[Z > C])
+nrow(selected_Z)/p
+```
+
+```{r}
+mean(selected_Z$Z > qnorm(.95))
+```
+
+
+
+```{r mysize=TRUE, size='\\footnotesize',}
+truncated_Z_pdf <- function(z) dnorm(z)/pnorm(C, lower.tail = F)
+# plot code hidden
+```
+
+```{r}
+maxZ <- max(Z) + .1
+ggplot(selected_Z) +
+  geom_histogram(bins = 50, aes(x = Z, y = ..density..)) + xlim(0, maxZ) +
+  stat_function(fun = truncated_Z_pdf, xlim = c(1, maxZ), linetype  = 2) +
+  stat_function(fun = dnorm, linetype  = 1) +
+  theme_minimal()
+```
+
+
+Cutoff for significance 
+
+```{r}
+pnorm(3.05, lower.tail = FALSE)/pnorm(C, lower.tail = FALSE)
+```
+
+Larger than:
+
+```{r}
+qnorm(.95)
+```
+
+```{r}
+mean(selected_Z$Z > 3.05)
+```
+
+This controls the **selective type 1 error**
+
+
+## Power
+
+```{r}
+C <- 1
+p <- 100
+mu <- c(rep(1, 10), rep(0, p - 10))
+Z <- rnorm(p) + mu
+selection_index <- Z > C
+which(selection_index)
+```
+
+```{r}
+which(Z[selection_index] > qnorm(.95))
+```
+
+
+Cutoff for significance 
+
+```{r}
+pnorm(2.41, lower.tail = FALSE)/pnorm(C, lower.tail = FALSE)
+```
+
+```{r}
+which(Z[selection_index] > 2.41)
+```
+
+Testing the non-selected effects to determine if we should do any follow-up on them in future studies
+
+
+```{r mysize=TRUE, size='\\footnotesize',}
+truncated_Z_pdf <- function(z) dnorm(z)/pnorm(C)
+# plot code hidden
+```
+
+```{r}
+unselected_Z <- selected_Z <- data.frame(Z = Z[Z < C])
+maxZ <- min(Z) - .1
+ggplot(unselected_Z) +
+  geom_histogram(bins = 20, aes(x = Z, y = ..density..)) + xlim(maxZ, max(Z) + .1) +
+  stat_function(fun = truncated_Z_pdf, xlim = c(maxZ, C), linetype  = 2) +
+  stat_function(fun = dnorm, linetype  = 1) +
+  theme_minimal()
+```
+
+```{r}
+pnorm(.84)/pnorm(C)
+```
+
+```{r}
+which(unselected_Z > .84)
+```
+
+
+
+## Bonferroni correction after selection
+
+
+```{r}
+C <- 2
+p <- 10000
+Z <- rnorm(p)
+selected_Z <- selected_Z <- data.frame(Z = Z[Z > C])
+nrow(selected_Z)/p
+```
+
+```{r}
+mean(selected_Z$Z > qnorm(.95))
+```
+
+
+
+

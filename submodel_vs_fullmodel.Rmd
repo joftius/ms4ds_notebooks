@@ -1,0 +1,36 @@
+---
+title: "lassoinf"
+author: "Joshua Loftus"
+date: "4/16/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(glmnet)
+```
+
+## Submodels vs full models
+
+```{r}
+n <- 100
+Z <- rnorm(n)
+X1 <- rnorm(n)
+X2 <- 2*X1 + Z
+Y <- 3*X1 + 1.5*X2 + rnorm(n)
+
+summary(lm(Y~X1+X2))
+```
+
+```{r}
+summary(lm(Y~X1))
+```
+
+
+```{r}
+c(cor(Y,X1), cor(Y,X2))
+```
+
+```{r}
+summary(lm(Y~X2))
+```

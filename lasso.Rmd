@@ -1,0 +1,320 @@
+---
+title: "Lasso"
+author: "Joshua Loftus"
+date: "3/27/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# install.packages("glmnet")
+# warning: don't install packages within a "knit" markdown document
+# i.e. only run install.packages() in the console
+library(glmnet)
+library(hdi)
+library(RPtests)
+library(SLOPE)
+library(knockoff)
+library(stabs)
+library(selectiveInference)
+```
+
+## High dimensional regression
+
+```{r}
+n <- 100
+p <- 200
+rho <- 0.000001
+sparsity <- 5
+
+pairwise_incoherence <- function(x) {
+  X <- scale(x) / sqrt(n-1)
+  pi_x <- max(abs(t(X) %*% X - diag(rep(1, p))))
+  pi_x
+}
+
+oracle_irrepresentability_constant <- function(x, sparsity) {
+  p <- ncol(x)
+  Xs <- x[,1:sparsity]
+  PXs <- MASS::ginv(t(Xs) %*% Xs) %*% t(Xs)
+  PXsXj <- PXs %*% x[,(sparsity+1):p]
+  L1norms <- apply(PXsXj, 2, function(xj) sum(abs(xj)))
+  gamma <- 1 - max(L1norms)
+  gamma
+}
+
+oracle_lambda <- function(x, sparsity, sigma = 1) {
+  # 8*K*sigma/gamma * sqrt(log(p)/n)
+  n <- nrow(x)
+  p <- ncol(x)
+  K <- max(sqrt(colSums(x^2))/sqrt(n))
+  gamma <- oracle_irrepresentability_constant(x, sparsity)
+  lambda <- 8 * K * sigma * sqrt(log(p)/n) / gamma
+  lambda
+}
+
+oracle_beta_min <- function(x, sparsity) {
+  # minimum beta condition
+  n <- nrow(x)
+  Xs <- x[,1:sparsity]
+  C <- min(eigen(t(Xs) %*% Xs / n)$values)
+  Xinfty <- max(apply(MASS::ginv(t(Xs) %*% Xs / n), 2, function(row) sum(abs(row))))
+  lambda <- oracle_lambda(x, sparsity)
+  beta_min <- lambda * (4*1/sqrt(C) + Xinfty)
+  beta_min
+}
+
+correlated_gaussian_design <- function(n, p, rho) {
+  x <- matrix(rnorm(n*p), nrow = n)
+  z <- matrix(rep(t(rnorm(n)), p), nrow = n)
+  sqrt(1-rho)*x + sqrt(rho)*z
+}
+```
+
+
+## Assumptions of support recovery theory
+
+### Linear model?
+
+Difficult to check, limited theory for regression diagnostics in high-dimensional models
+
+### Irrepresentability condition?
+
+Requires knowing support, or bounding by checking on all subsets
+
+```{r}
+choose(50, 5)
+```
+
+- Computationally infeasible
+- Might give a poor bound
+
+### Bound on columns of X
+
+Easy
+
+### Minimum eigenvalue
+
+Similar story to the irrepresentability condition
+
+
+### Lower bound on lambda
+
+Need gamma (hard) and sigma (variance of the noise)
+
+Sigma may reasonably estimated
+
+### Minimum beta bound
+
+Requires the minimum eigenvalue, sigma, knowing the support:
+
+$$
+\| (X_S^TX_S/n)^{-1} \|_\infty
+$$
+
+### Idea:
+
+Use cross-validation to pick lambda, therefore $\hat S$ and $\hat \sigma^2$, and then check all these constants using $\hat S$.
+
+
+```{r}
+x <- correlated_gaussian_design(n, p, rho)
+
+pairwise_incoherence(x)
+
+oracle_irrepresentability_constant(x, sparsity)
+```
+
+
+```{r}
+B <- oracle_beta_min(x, sparsity)
+B <- 1
+
+beta <- c(rep(B, sparsity), rep(0, p - sparsity))
+y <- x %*% beta + rnorm(n)
+```
+
+## Lasso
+
+```{r}
+fit <- glmnet(x, y, intercept = FALSE)
+plot(fit)
+```
+
+## Cross-validation 
+
+
+```{r}
+cv_fit <- cv.glmnet(x, y, intercept = FALSE)
+plot(cv_fit)
+```
+```{r}
+
+coef(fit, s = cv_fit$lambda.min, intercept = FALSE)
+```
+
+
+
+```{r}
+coef(fit, s = oracle_lambda(x, sparsity), intercept = FALSE)
+```
+
+
+
+## Elastic net
+
+"Within group" correlation specifically
+
+```{r}
+correlated_gaussian_design <- function(n, p, rho) {
+  x <- matrix(rnorm(n*p), nrow = n)
+  z <- matrix(rep(t(rnorm(n)), p), nrow = n)
+  sqrt(1-rho)*x + sqrt(rho)*z
+}
+
+fit <- glmnet(x, y, alpha = .9)
+plot(fit)
+```
+
+## Cross-validation 
+
+
+```{r}
+cv_fit <- cv.glmnet(x, y, alpha = .5)
+plot(cv_fit)
+```
+
+```{r}
+coef(fit, s = cv_fit$lambda.min)
+```
+
+
+
+
+## Without an oracle...
+
+```{r}
+B <- oracle_beta_min(x, sparsity)
+B <- 1
+
+beta <- c(rep(B, sparsity), rep(0, p - sparsity))
+y <- x %*% beta + rnorm(n)
+```
+
+
+Cross-validation to estimate sigma
+
+```{r}
+# library(selectiveInference)
+estimateSigma(x, y)
+```
+
+
+## Inference for lasso / high-dimensional regression
+
+What's different compared to the low-dimensional case and the usual MLE theory?
+
+Estimation -> shrinkage -> centers of intervals biased (toward zero)
+
+True for James-Stein estimator of normal mean, penalized regression estimators, etc
+
+
+### Idea: debiased lasso
+
+Take support from lasso and then fit OLS on that support
+
+
+```{r}
+fit <- glmnet(x, y, intercept = FALSE)
+
+cv_fit <- cv.glmnet(x, y, intercept = FALSE)
+cv_lambda <- cv_fit$lambda.min
+
+support <- which(coef(fit, s = cv_lambda, intercept = FALSE) != 0) - 1
+support
+debiased_fit <- lm(y ~ x[,support])
+summary(debiased_fit)
+confint(debiased_fit)
+```
+
+```{r}
+coef(fit, s = oracle_lambda(x, sparsity))[support+1]
+```
+
+
+
+### Asymptotic Gaussian inference for de-sparsified lasso
+
+
+```{r}
+# library(hdi)
+debiased_lasso <- lasso.proj(x, y)
+```
+
+
+
+
+
+
+```{r}
+# library(hdi)
+output <- boot.lasso.proj(x, y, boot.shortcut = TRUE)
+```
+```{r}
+output
+```
+
+```{r}
+mean(output$pval[6:200] < 0.05)
+```
+
+```{r}
+output$pval[support]
+```
+
+
+
+Control the selective type 1 error using the selectiveInference R package
+
+
+```{r}
+# library(selectiveInference)
+larfit <- lar(x, y)
+```
+
+```{r}
+larInf(larfit, k = length(support))
+```
+
+
+
+## Goodness of fit test
+
+Test for lasso failing to capture true non-nulls
+
+```{r}
+# library(RPtests)
+unselected <- setdiff(1:ncol(x), support)
+RPtest(x[, support], y, resid_type = "OLS", test = "group", x_alt = x[, unselected])
+```
+
+
+## FDR
+
+```{r}
+slfit <- SLOPE(x, y, sigma = 1)
+```
+
+```{r}
+which(slfit$nonzeros)
+```
+
+
+```{r}
+stabsel(x, y, cutoff = 0.75, PFER = 1)
+```
+
+```{r}
+knockoff.filter(x, y)
+```
+
