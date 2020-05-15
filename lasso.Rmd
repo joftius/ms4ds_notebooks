@@ -2,14 +2,14 @@
 title: "Lasso"
 author: "Joshua Loftus"
 date: "3/27/2020"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-# install.packages("glmnet")
-# warning: don't install packages within a "knit" markdown document
-# i.e. only run install.packages() in the console
+```
+
+```{r}
 library(glmnet)
 library(hdi)
 library(RPtests)
@@ -248,7 +248,7 @@ coef(fit, s = oracle_lambda(x, sparsity))[support+1]
 
 ```{r}
 # library(hdi)
-debiased_lasso <- lasso.proj(x, y)
+#debiased_lasso <- lasso.proj(x, y)
 ```
 
 
@@ -258,18 +258,18 @@ debiased_lasso <- lasso.proj(x, y)
 
 ```{r}
 # library(hdi)
-output <- boot.lasso.proj(x, y, boot.shortcut = TRUE)
+#output <- boot.lasso.proj(x, y, boot.shortcut = TRUE)
 ```
 ```{r}
-output
-```
-
-```{r}
-mean(output$pval[6:200] < 0.05)
+#output
 ```
 
 ```{r}
-output$pval[support]
+#mean(output$pval[6:200] < 0.05)
+```
+
+```{r}
+#output$pval[support]
 ```
 
 
@@ -311,10 +311,10 @@ which(slfit$nonzeros)
 
 
 ```{r}
-stabsel(x, y, cutoff = 0.75, PFER = 1)
+#stabsel(x, y, cutoff = 0.75, PFER = 1)
 ```
 
 ```{r}
-knockoff.filter(x, y)
+#knockoff.filter(x, y)
 ```
 

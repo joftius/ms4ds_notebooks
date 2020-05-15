@@ -2,7 +2,7 @@
 title: "lassoinf"
 author: "Joshua Loftus"
 date: "4/16/2020"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}

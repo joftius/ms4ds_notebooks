@@ -2,11 +2,14 @@
 title: "causalML"
 author: "Joshua Loftus"
 date: "5/3/2020"
-output: html_document
+output: github_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
 library(tidyverse)
 library(glmnet)
 library(broom)
@@ -205,7 +208,7 @@ hd_instance(n = 800, alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity 
 
 
 ```{r}
-hd_MCMSE(alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity = 10, beta = 1)
-hd_MCMSE(n = 400, alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity = 10, beta = 1)
-hd_MCMSE(n = 800, alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity = 10, beta = 1)
+#hd_MCMSE(alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity = 10, beta = 1)
+#hd_MCMSE(n = 400, alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity = 10, beta = 1)
+#hd_MCMSE(n = 800, alpha_sparsity = 5, alpha = 1, theta = 3.14, beta_sparsity = 10, beta = 1)
 ```

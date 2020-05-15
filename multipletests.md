@@ -3,6 +3,30 @@ Multiple testing
 Joshua Loftus
 4/2/2020
 
+We'll make use of these packages:
+
+    # Fairly standard packages
+    install.packages(c("tidyverse", "devtools", "glmnet"))
+    # High-dimensional / ML inference packages
+    install.packages(c("hdi", "RPtests", "SLOPE", "stabs",
+                       "knockoff", "selectiveInference", "hdm"))
+    devtools::install_github("swager/crossEstimation")
+
+``` r
+library(tidyverse)
+```
+
+    ## ── Attaching packages ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse 1.3.0 ──
+
+    ## ✓ ggplot2 3.3.0     ✓ purrr   0.3.4
+    ## ✓ tibble  3.0.1     ✓ dplyr   0.8.5
+    ## ✓ tidyr   1.0.2     ✓ stringr 1.4.0
+    ## ✓ readr   1.3.1     ✓ forcats 0.5.0
+
+    ## ── Conflicts ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────── tidyverse_conflicts() ──
+    ## x dplyr::filter() masks stats::filter()
+    ## x dplyr::lag()    masks stats::lag()
+
 Data generation
 ---------------
 
@@ -29,7 +53,7 @@ These are less than alpha iff original p-values are less than alpha/n
 which(p.adjust(pvalues, method = "bonferroni") < 0.05)
 ```
 
-    ## [1] 1 2 4 9
+    ## [1]   7   8  10 334
 
 Holm correction
 ---------------
@@ -42,7 +66,7 @@ These are less than alpha iff original p-values are less than alpha/n
 which(p.adjust(pvalues, method = "holm") < 0.05)
 ```
 
-    ## [1] 1 2 4 9
+    ## [1]   7   8  10 334
 
 Benjamini-Hochberg correction
 -----------------------------
@@ -55,7 +79,7 @@ These are less than alpha iff original p-values are less than alpha/n
 which(p.adjust(pvalues, method = "BH") < 0.05)
 ```
 
-    ## [1]  1  2  4  7  9 10
+    ##  [1]   1   4   7   8   9  10 328 334 572 643
 
 Simulation
 ----------
@@ -83,7 +107,7 @@ mc_sample <- replicate(1000, instance(1000, 10, sqrt(2*log(1000))))
 rowMeans(mc_sample)
 ```
 
-    ## [1] 4.304 0.045
+    ## [1] 4.325 0.052
 
 FWER:
 
@@ -91,7 +115,7 @@ FWER:
 mean(mc_sample[2, ] > 0)
 ```
 
-    ## [1] 0.042
+    ## [1] 0.049
 
 ### FDR
 
@@ -116,7 +140,7 @@ mc_sample <- replicate(1000, instance(1000, 10, sqrt(2*log(1000))))
 rowMeans(mc_sample)
 ```
 
-    ## [1] 6.277 0.389
+    ## [1] 6.296 0.433
 
 Checking FDR?
 
@@ -124,7 +148,7 @@ Checking FDR?
 mean(mc_sample[2, ]/pmax(colSums(mc_sample), 1))
 ```
 
-    ## [1] 0.04840085
+    ## [1] 0.05429149
 
 How can we cheat the FDR?
 -------------------------
@@ -148,14 +172,14 @@ pvalues <- c(pvalues, rep(0.00001, 100))
 which(p.adjust(pvalues, method = "BH") < 0.05)
 ```
 
-    ##   [1]    1    2    3    5    6    7    8    9   10  238  484  651  748 1001 1002
-    ##  [16] 1003 1004 1005 1006 1007 1008 1009 1010 1011 1012 1013 1014 1015 1016 1017
-    ##  [31] 1018 1019 1020 1021 1022 1023 1024 1025 1026 1027 1028 1029 1030 1031 1032
-    ##  [46] 1033 1034 1035 1036 1037 1038 1039 1040 1041 1042 1043 1044 1045 1046 1047
-    ##  [61] 1048 1049 1050 1051 1052 1053 1054 1055 1056 1057 1058 1059 1060 1061 1062
-    ##  [76] 1063 1064 1065 1066 1067 1068 1069 1070 1071 1072 1073 1074 1075 1076 1077
-    ##  [91] 1078 1079 1080 1081 1082 1083 1084 1085 1086 1087 1088 1089 1090 1091 1092
-    ## [106] 1093 1094 1095 1096 1097 1098 1099 1100
+    ##   [1]    1    2    3    4    5    6    7    8    9  924 1001 1002 1003 1004 1005
+    ##  [16] 1006 1007 1008 1009 1010 1011 1012 1013 1014 1015 1016 1017 1018 1019 1020
+    ##  [31] 1021 1022 1023 1024 1025 1026 1027 1028 1029 1030 1031 1032 1033 1034 1035
+    ##  [46] 1036 1037 1038 1039 1040 1041 1042 1043 1044 1045 1046 1047 1048 1049 1050
+    ##  [61] 1051 1052 1053 1054 1055 1056 1057 1058 1059 1060 1061 1062 1063 1064 1065
+    ##  [76] 1066 1067 1068 1069 1070 1071 1072 1073 1074 1075 1076 1077 1078 1079 1080
+    ##  [91] 1081 1082 1083 1084 1085 1086 1087 1088 1089 1090 1091 1092 1093 1094 1095
+    ## [106] 1096 1097 1098 1099 1100
 
 Selective inference for marginal screening
 ------------------------------------------
@@ -168,7 +192,7 @@ selected_Z <- selected_Z <- data.frame(Z = Z[Z > C])
 nrow(selected_Z)/p
 ```
 
-    ## [1] 0.0213
+    ## [1] 0.0238
 
 ``` r
 mean(selected_Z$Z > qnorm(.95))
@@ -192,7 +216,7 @@ ggplot(selected_Z) +
 
     ## Warning: Removed 2 rows containing missing values (geom_bar).
 
-![](multipletests_files/figure-markdown_github/unnamed-chunk-18-1.png)
+![](multipletests_files/figure-markdown_github/unnamed-chunk-19-1.png)
 
 Cutoff for significance
 
@@ -214,7 +238,7 @@ qnorm(.95)
 mean(selected_Z$Z > 3.05)
 ```
 
-    ## [1] 0.04225352
+    ## [1] 0.06302521
 
 This controls the **selective type 1 error**
 
@@ -230,13 +254,13 @@ selection_index <- Z > C
 which(selection_index)
 ```
 
-    ##  [1]  2  3  7  8  9 29 37 39 41 55 58 61 63 67 73 80 83 84 94
+    ##  [1]  4  5  6  7  9 10 28 40 56 58 64 68 76 83 93 97 98
 
 ``` r
 which(Z[selection_index] > qnorm(.95))
 ```
 
-    ## [1]  4  5  8 10 18
+    ## [1] 1 3 4 6
 
 Cutoff for significance
 
@@ -250,7 +274,7 @@ pnorm(2.41, lower.tail = FALSE)/pnorm(C, lower.tail = FALSE)
 which(Z[selection_index] > 2.41)
 ```
 
-    ## [1] 4
+    ## [1] 1 3 4
 
 Testing the non-selected effects to determine if we should do any follow-up on them in future studies
 
@@ -271,7 +295,7 @@ ggplot(unselected_Z) +
 
     ## Warning: Removed 2 rows containing missing values (geom_bar).
 
-![](multipletests_files/figure-markdown_github/unnamed-chunk-27-1.png)
+![](multipletests_files/figure-markdown_github/unnamed-chunk-28-1.png)
 
 ``` r
 pnorm(.84)/pnorm(C)
@@ -283,7 +307,7 @@ pnorm(.84)/pnorm(C)
 which(unselected_Z > .84)
 ```
 
-    ## [1]  3 45
+    ## [1] 23 45 48 68
 
 Bonferroni correction after selection
 -------------------------------------
@@ -296,7 +320,7 @@ selected_Z <- selected_Z <- data.frame(Z = Z[Z > C])
 nrow(selected_Z)/p
 ```
 
-    ## [1] 0.0221
+    ## [1] 0.0223
 
 ``` r
 mean(selected_Z$Z > qnorm(.95))

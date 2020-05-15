@@ -7,6 +7,20 @@ output: github_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+```
+
+We'll make use of these packages:
+
+```
+# Fairly standard packages
+install.packages(c("tidyverse", "devtools", "glmnet"))
+# High-dimensional / ML inference packages
+install.packages(c("hdi", "RPtests", "SLOPE", "stabs",
+                   "knockoff", "selectiveInference", "hdm"))
+devtools::install_github("swager/crossEstimation")
+```
+
+```{r}
 library(tidyverse)
 ```
 

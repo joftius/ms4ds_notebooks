@@ -1,24 +1,25 @@
----
-title: "Causal ML"
-author: "Joshua Loftus"
-date: "5/7/2020"
-output: github_document
----
+Causal ML
+================
+Joshua Loftus
+5/7/2020
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+``` r
+library(glmnet)
 ```
 
-```{r}
-library(glmnet)
+    ## Loading required package: Matrix
+
+    ## Loaded glmnet 4.0
+
+``` r
 library(hdm)
 library(crossEstimation)
 ```
 
-## Generate data satisfying PLM assumptions
+Generate data satisfying PLM assumptions
+----------------------------------------
 
-
-```{r}
+``` r
 correlated_gaussian_design <- function(n, p, rho) {
   x <- matrix(rnorm(n*p), nrow = n)
   if (rho == 0) return(x)
@@ -50,60 +51,90 @@ Try various methods
 
 ### hdm package using DML and PDS
 
-```{r}
+``` r
 DML_fit = rlassoEffect(X, Y, D, method = "partialling out")
 summary(DML_fit)
+```
 
+    ## [1] "Estimates and significance testing of the effect of target variables"
+    ##      Estimate. Std. Error t value Pr(>|t|)    
+    ## [1,]    2.2524     0.2402   9.379   <2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+``` r
 PDS_fit = rlassoEffect(X, Y, D, method = "double selection")
 summary(PDS_fit)
 ```
 
+    ## [1] "Estimates and significance testing of the effect of target variables"
+    ##    Estimate. Std. Error t value Pr(>|t|)    
+    ## d1    3.3032     0.2537   13.02   <2e-16 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
 ### Failing assumption of experimental methods
 
-```{r}
+``` r
 #CE_fit <- ate.glmnet(X, Y, D)
 #CE_fit
 ```
 
-```{r}
+``` r
 ate.randomForest(X, Y, D)
 ```
 
+    ## $tau
+    ## [1] 5.399424
+    ## 
+    ## $var
+    ## [1] 0.1520102
+    ## 
+    ## $conf.int
+    ## [1] 4.758120 6.040727
+    ## 
+    ## $conf.level
+    ## [1] 0.9
 
+Generate data with randomized treatment
+---------------------------------------
 
-## Generate data with randomized treatment
+Now *D* is randomized, i.e. *m*(*X*)≡0. Note also that these methods assume *D* is binary, while
 
-Now $D$ is randomized, i.e. $m(X) \equiv 0$. Note also that these methods assume $D$ is binary, while 
-
-```{r}
+``` r
 D <- rbinom(n, 1, .5)
 Y <- theta * D + rnorm(n)  
 Y <- Y + X %*% be
 ```
 
-
-
 ### crossEstimation package
 
-
-```{r}
+``` r
 #CE_fit <- ate.glmnet(X, Y, D)
 #CE_fit
 ```
 
-```{r}
+``` r
 CE_fit <- ate.randomForest(X, Y, D)
 CE_fit
 ```
 
+    ## $tau
+    ## [1] 2.515404
+    ## 
+    ## $var
+    ## [1] 0.2117177
+    ## 
+    ## $conf.int
+    ## [1] 1.758561 3.272247
+    ## 
+    ## $conf.level
+    ## [1] 0.9
 
+------------
+============
 
-
-
-# ------------
-
-
-```{r}
+``` r
 hd_instance <- function(n = 100, p = 200, rho = 0, alpha_sparsity = 0, alpha = 0, theta = 0, beta_sparsity = 0, beta = 0) {
   X <- correlated_gaussian_design(n, p, rho)
   V <- rnorm(n)
@@ -144,8 +175,7 @@ hd_MCMSE <- function(nsim = 100, n = 100, p = 200, rho = 0, alpha_sparsity = 0, 
 }
 ```
 
-
-```{r}
+``` r
 # Observational
 #hd_instance(100, 200, 0.1, 5, 1, 3.14, 5, 1)
 
@@ -153,7 +183,7 @@ hd_MCMSE <- function(nsim = 100, n = 100, p = 200, rho = 0, alpha_sparsity = 0, 
 #hd_instance(100, 200, 0.1, 0, 0, 3.14, 5, 1)
 ```
 
-```{r}
+``` r
 # Observational
 #hd_MCMSE(100, 100, 200, 0.1, 5, 1, 3.14, 5, 1)
 
@@ -163,8 +193,7 @@ hd_MCMSE <- function(nsim = 100, n = 100, p = 200, rho = 0, alpha_sparsity = 0, 
 
 More strongly correlated features
 
-
-```{r}
+``` r
 # Observational
 #hd_instance(100, 200, 0.5, 5, 1, 3.14, 5, 1)
 
@@ -172,7 +201,7 @@ More strongly correlated features
 #hd_instance(100, 200, 0.5, 0, 0, 3.14, 5, 1)
 ```
 
-```{r}
+``` r
 # Observational
 #hd_MCMSE(20, 100, 200, 0.5, 5, 1, 3.14, 5, 1)
 
@@ -180,10 +209,9 @@ More strongly correlated features
 #hd_MCMSE(20, 100, 200, 0.5, 0, 0, 3.14, 5, 1)
 ```
 
-
 A less sparse scenario
 
-```{r}
+``` r
 # Observational
 #hd_instance(100, 200, 0.1, 50, 1, 3.14, 20, 1)
 
@@ -191,7 +219,7 @@ A less sparse scenario
 #hd_instance(100, 200, 0.1, 0, 0, 3.14, 20, 1)
 ```
 
-```{r}
+``` r
 # Observational
 #hd_MCMSE(20, 100, 200, 0.1, 50, 1, 3.14, 20, 1)
 
@@ -199,16 +227,11 @@ A less sparse scenario
 #hd_MCMSE(20, 100, 200, 0.1, 0, 0, 3.14, 20, 1)
 ```
 
-
-
-
 Observational setting with omitted variable bias
 
 "As good as random conditional on covariates" fails because our set of covariates doesn't include everything that's relevant
 
-
-
-```{r}
+``` r
 hd_instance <- function(n = 100, p = 200, rho = 0, alpha_sparsity = 0, alpha = 0, theta = 0, beta_sparsity = 0, beta = 0) {
   X <- correlated_gaussian_design(n, p, rho)
   V <- rnorm(n)
@@ -251,9 +274,7 @@ hd_MCMSE <- function(nsim = 100, n = 100, p = 200, rho = 0, alpha_sparsity = 0, 
 }
 ```
 
-
-
-```{r}
+``` r
 # Observational
 #hd_instance(100, 200, 0.1, 5, 1, 3.14, 5, 1)
 
@@ -261,11 +282,10 @@ hd_MCMSE <- function(nsim = 100, n = 100, p = 200, rho = 0, alpha_sparsity = 0, 
 #hd_instance(100, 200, 0.1, 0, 0, 3.14, 5, 1)
 ```
 
-```{r}
+``` r
 # Observational
 #hd_MCMSE(30, 100, 200, 0.5, 10, 1, 3.14, 10, 1)
 
 # Experimental
 #hd_MCMSE(20, 100, 200, 0.1, 0, 0, 3.14, 5, 1)
 ```
-
