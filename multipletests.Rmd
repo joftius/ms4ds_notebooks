@@ -9,16 +9,27 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-We'll make use of these packages:
+For various technological/historical reasons there is a lot more data in our current era than during the period when classical statistical methods were initially developed.
 
-```
-# Fairly standard packages
-install.packages(c("tidyverse", "devtools", "glmnet"))
-# High-dimensional / ML inference packages
-install.packages(c("hdi", "RPtests", "SLOPE", "stabs",
-                   "knockoff", "selectiveInference", "hdm"))
-devtools::install_github("swager/crossEstimation")
-```
+Simplified descriptions:
+
+* Classical hypothesis testing problem: a **(scientific) theory** derived from previous observations and first principles implies some **experimental hypothesis** $H$ about an observable/measurable quantity $X$. This is formalized by introducing a (low-dimensional) parametric probability model for $X$ and deriving a **statistical (null) hypothesis** $H_0$ about parameters of this distribution, along with the distribution a test statistic $T = T(X)$ would have assuming $H_0$ is true and, ideally, also under some alternative hypothesis $H_A$ (or family of alternatives). Implementation of the testing procedure on real data usually requires solving an optimization problem, possibly with (iterative) numerical algorithms.
+
+-- e.g. Testing the central tendency via a parameter like the mean $\mu = \mathbb E[X]$ and a hypothesis that it equals some pre-specified value, $H_0 : \mu = \mu_0$ vs some other pre-specified value $H_A : \mu = \mu_A$, range of values $\mu > \mu_0$, or union of ranges $\mu \neq \mu_0$.
+
+-- e.g. Testing the difference between two central tendencies $\mu_X = \mathbb E[X], \mu_Y = \mathbb E[Y]$, often a null hypothesis of equality $H_0 : \mu_X - \mu_Y = 0$.
+
+-- e.g. Testing the coefficient in a linear model predicting a pre-specified outcome variable $Y$ using pre-specified predictor variables $X$ combined with some probabilistic assumptions about the errors $\epsilon$ of the linear model $Y = X\beta + \epsilon$.
+
+* A modern hypothesis testing problem: someone has a large dataset (which we assume is available or easily transformed to a rectangular/spreadsheet format, with many variables/columns, many observations/rows, or both). They might have a vague (scientific) theory, but this theory may be related to many separate hypotheses $H^1, H^2, H^3, \ldots$, or one vague hypothesis $H$ about many of the variables in the dataset, and concerning possibly an unknown subset of them. Most likely there is no single, well-motivated probabilistic model for the data. In this setting it is common to **bet on sparsity**: assume there exists some low-dimensional subset/subspace or representation of the data that satisfies some probabilistic modeling assumptions, and then use optimization algorithms to search for this. 
+
+-- e.g. **Simultaneous inference**: we may wish to test statistical hypotheses about each of many variables and provide some kind of statistical guarantee about the combined family of hypotheses, rather than just a separate statistical guarantee for each one individually. For example, we may wish to control the **family-wise error rate** (FWER) which is the probability of making any type 1 errors.
+
+-- e.g. **Selective inference**: select a subset of the hypotheses and provide some statistical guarantee that applies only to the selected subset. For example, we may wish to control the **false-discovery rate** which is the expected proportion of type 1 errors in the selected set.
+
+-- e.g. **High-dimensional (linear) regression**: select a subset of variables to predict a pre-specified outcome variable in a linear model, and provide inferences for the selected predictors using some appropriately modified type of statistical guarantee.
+
+-- e.g. **Machine learning**: a variety of predictive approaches which relax the linear modeling assumption in some way, but may be used in combination with some assumptions that allow interpretable inference about some hypotheses concerning parts of the model.
 
 ```{r}
 library(tidyverse)
