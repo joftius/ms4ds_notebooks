@@ -9,6 +9,8 @@ output: github_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+# Modern statistics
+
 For various technological/historical reasons there is a lot more data in our current era than during the period when classical statistical methods were initially developed.
 
 Simplified descriptions:
@@ -25,37 +27,119 @@ Simplified descriptions:
 
 -- e.g. **Simultaneous inference**: we may wish to test statistical hypotheses about each of many variables and provide some kind of statistical guarantee about the combined family of hypotheses, rather than just a separate statistical guarantee for each one individually. For example, we may wish to control the **family-wise error rate** (FWER) which is the probability of making any type 1 errors.
 
--- e.g. **Selective inference**: select a subset of the hypotheses and provide some statistical guarantee that applies only to the selected subset. For example, we may wish to control the **false-discovery rate** which is the expected proportion of type 1 errors in the selected set.
+-- e.g. **Selective inference**: select a subset of the hypotheses and provide some statistical guarantee that applies only to the selected subset. For example, we may wish to control the **false discovery rate** which is the expected proportion of type 1 errors in the selected set.
 
 -- e.g. **High-dimensional (linear) regression**: select a subset of variables to predict a pre-specified outcome variable in a linear model, and provide inferences for the selected predictors using some appropriately modified type of statistical guarantee.
 
 -- e.g. **Machine learning**: a variety of predictive approaches which relax the linear modeling assumption in some way, but may be used in combination with some assumptions that allow interpretable inference about some hypotheses concerning parts of the model.
 
-```{r}
+# Multiple testing
+
+## The context
+
+In this notebook we focus on problems related to testing many hypotheses. We do not assume these hypotheses are related to a linear regression model. Instead, we are usually thinking of these hypotheses as tests of many separate effects. As a canonical example we can think of genome association studies, where test $j$ corresponds to some measure of association between variation at some location $L_j$ on the genome with a pre-chosen outcome of interest. The outcome could be membership to a particular group, like a treatment or exposure group compared to a control or placebo group, in which case test $j$ may be a two-sample test for similarity/equality at $L_j$ between the groups.
+
+Mathematically, we assume for $j = 1, \ldots, p$ we have test statistics $T_j$ for testing the hypothesis
+
+$$
+H_{0,j} : \theta_j = \theta_{0,j}
+$$
+such that if $H_{0,j}$ is true then $T_j$ has a known distribution with cumulative distribution function $F_j(t)$. Hence, $p_j := F_j(T_j)$ is a valid $p$-value in the sense that $p_j \sim U[0,1]$ if $H_{0,j}$ is true. As usual in hypothesis testing, we first focus on controlling Type 1 error. So while we do not assume anything more about $T_j$ for now, we have in the back of our minds the expectation that $p_j$ will be stochastically smaller than $U[0,1]$ under some alternative $H_{A,j}$ of interest, so that the tests will have some power.
+
+## The general problem
+
+More tests means more opportunities for errors! If we publish papers or reports throughout our career with one hypothesis test each, we may hope that only 5\% (say) of these works contain errors. But if each of our publications have at least 10 independent tests where the null hypotheses are true, then there is at least 40\% probability of having at least one Type 1 error, hence we would expect at least 40\% of our works to contain some errors.
+
+We have several options
+
+- Lower our standards and accept that nearly every piece of work we're responsible for will have have (a high probability of containing) multiple errors
+
+- Test fewer hypotheses in each study, perhaps limiting to only one (and potentially suffer the professional costs of publication rejection if our only test comes back negative)
+
+- Modify our use of statistical methods to achieve some type of error control that holds across all of the multiple tests in any individual study
+
+Hopefully it's already obvious that we will pursue the third option.
+
+(Note: in practice there may be some other criteria for choosing which tests to group together which is more nuanced or better motivated than whether they're appearing in the same study, but resolving this question usually takes us into the realm of domain specific knowledge)
+
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 ```
 
-## Data generation
+## One data generation example
 
-Assume
+Assume our goal is to test $H_{0,i} : \mu_i = 0$ against $H_{A,i} : \mu_i < 0$ using the data
+
 $$
 z_i \sim N(\mu_i, 1)
 $$
-Our goal is to test $H_{0,i} : \mu_i = 0$ against $H_{A,i} : \mu_i < 0$.
+
+Suppose the first 10 effects are nonzero, and the remaining $p - 10$ are null. To keep things simple for now we will also assume the hypotheses are distinct and test statistics are independent.
+
+We generate an example dataset below and transform the test statistics to $p$-values for the two-sided alternatives:
 
 ```{r}
-p <- 1000
+set.seed(1)
+p <- 100
 threshold <- 1.1*sqrt(2*log(p))
 mu <- c(rep(-threshold, 10), rep(0, p - 10))
-z <- rnorm(p) + mu
-pvalues <- pnorm(z)
+instance <- function(p, mu) {
+  z <- rnorm(p) + mu
+  p <- 2*(1-pnorm(abs(z))) # twice the one-sided upper tail area
+  p
+}
 ```
 
+Now let's check to see which $p$-values are significant at the 5\% level
 
-## Bonferroni-Dunn correction
+```{r}
+pvalues <- instance(p, mu)
+which(pvalues < 0.05)
+```
 
-Control FWER
+We correctly find 9 of the 10 truly nonzero effects, but we also make several Type 1 errors. Here's another instance:
 
+```{r}
+pvalues <- instance(p, mu)
+which(pvalues < 0.05)
+```
+
+Now let's repeat the experiment many times and see (1) how often we make any Type 1 errors, and (2) the average number of Type 1 errors
+
+```{r}
+experiment <- function(p, mu) {
+  pvalues <- instance(p, mu)
+  at_least_one <- any(pvalues[11:p] < 0.05)
+  how_many <- sum(pvalues[11:p] < 0.05)
+  c(at_least_one, how_many)
+}
+rowMeans(replicate(100, experiment(p, mu)))
+```
+
+About 99\% of the time we make at least one Type 1 error, and on average we make about 5 Type 1 errors (the expected number of Type 1 errors from the $\text{Bin}(90, 0.05)$ distribution is 4.5).
+
+Now let's consider statistical methods to address this problem.
+
+## Solution approaches
+
+There are many methods for various multiple testing problems, and at a high level these can be classified based on what type of error criterion they aim to control (instead of aiming to control Type 1 error for each test separately).
+
+### Family-wise error rate
+
+For tests of the collection of hypotheses $H = \{ H_{0,j}, j = 1, \ldots, p \}$ the family-wise error rate of a testing procedure $T$ is the probability of making any Type 1 errors
+
+$$
+\text{FWER} = \text{FWER}(T; H) = \mathbb P_H(T \text{ commits at least one Type 1 error})
+$$
+This is a very strict error criterion, typically requiring a high standard of evidence to declare significance. As a result, it may result in low power (high Type 2 error) to detect small or moderately sized non-null effects.
+
+#### Bonferroni-Dunn correction
+
+This correction is based on the union bound. As a result, it works (controls FWER) under arbitrary dependence, and does not require the tests or $p$-values are independent. The procedure works as follows: reject $H_{0,j}$ at significance level $\alpha$ if $p_j < \alpha/p$. Let $E_j = \{ \text{Test } j \text{ commits a Type 1 error}\}$, so $\mathbb P_H(E_j) \leq \alpha/p$.
+
+$$
+FWER = \mathbb P_H \left( \bigcup_{j=1}^p E_j \right) \leq \sum_{j=1}^p \mathbb P_H(E_j) \leq \sum_{j=1}^p \frac{\alpha}{p} = \alpha
+$$
 
 These are less than alpha iff original p-values are less than alpha/n
 
@@ -64,9 +148,7 @@ which(p.adjust(pvalues, method = "bonferroni") < 0.05)
 ```
 
 
-## Holm correction
-
-Control FWER
+#### Holm correction
 
 These are less than alpha iff original p-values are less than alpha/n
 
@@ -74,8 +156,9 @@ These are less than alpha iff original p-values are less than alpha/n
 which(p.adjust(pvalues, method = "holm") < 0.05)
 ```
 
+### False discovery rate
 
-## Benjamini-Hochberg correction
+#### Benjamini-Hochberg correction
 
 Control FDR
 
