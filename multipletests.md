@@ -12,21 +12,21 @@ Simplified descriptions:
 
 -   Classical hypothesis testing problem: a **(scientific) theory** derived from previous observations and first principles implies some **experimental hypothesis** *H* about an observable/measurable quantity *X*. This is formalized by introducing a (low-dimensional) parametric probability model for *X* and deriving a **statistical (null) hypothesis** *H*<sub>0</sub> about parameters of this distribution, along with the distribution a test statistic *T* = *T*(*X*) would have assuming *H*<sub>0</sub> is true and, ideally, also under some alternative hypothesis *H*<sub>*A*</sub> (or family of alternatives). Implementation of the testing procedure on real data usually requires solving an optimization problem, possibly with (iterative) numerical algorithms.
 
--- e.g. Testing the central tendency via a parameter like the mean $\\mu = \\mathbb E\[X\]$ and a hypothesis that it equals some pre-specified value, *H*<sub>0</sub> : *μ* = *μ*<sub>0</sub> vs some other pre-specified value *H*<sub>*A*</sub> : *μ* = *μ*<sub>*A*</sub>, range of values *μ* &gt; *μ*<sub>0</sub>, or union of ranges *μ* ≠ *μ*<sub>0</sub>.
+-   e.g. Testing the central tendency via a parameter like the mean $\\mu = \\mathbb E\[X\]$ and a hypothesis that it equals some pre-specified value, *H*<sub>0</sub> : *μ* = *μ*<sub>0</sub> vs some other pre-specified value *H*<sub>*A*</sub> : *μ* = *μ*<sub>*A*</sub>, range of values *μ* &gt; *μ*<sub>0</sub>, or union of ranges *μ* ≠ *μ*<sub>0</sub>.
 
--- e.g. Testing the difference between two central tendencies $\\mu\_X = \\mathbb E\[X\], \\mu\_Y = \\mathbb E\[Y\]$, often a null hypothesis of equality *H*<sub>0</sub> : *μ*<sub>*X*</sub> − *μ*<sub>*Y*</sub> = 0.
+-   e.g. Testing the difference between two central tendencies $\\mu\_X = \\mathbb E\[X\], \\mu\_Y = \\mathbb E\[Y\]$, often a null hypothesis of equality *H*<sub>0</sub> : *μ*<sub>*X*</sub> − *μ*<sub>*Y*</sub> = 0.
 
--- e.g. Testing the coefficient in a linear model predicting a pre-specified outcome variable *Y* using pre-specified predictor variables *X* combined with some probabilistic assumptions about the errors *ϵ* of the linear model *Y* = *X**β* + *ϵ*.
+-   e.g. Testing the coefficient in a linear model predicting a pre-specified outcome variable *Y* using pre-specified predictor variables *X* combined with some probabilistic assumptions about the errors *ϵ* of the linear model *Y* = *X**β* + *ϵ*.
 
 -   A modern hypothesis testing problem: someone has a large dataset (which we assume is available or easily transformed to a rectangular/spreadsheet format, with many variables/columns, many observations/rows, or both). They might have a vague (scientific) theory, but this theory may be related to many separate hypotheses *H*<sup>1</sup>, *H*<sup>2</sup>, *H*<sup>3</sup>, …, or one vague hypothesis *H* about many of the variables in the dataset, and concerning possibly an unknown subset of them. Most likely there is no single, well-motivated probabilistic model for the data. In this setting it is common to **bet on sparsity**: assume there exists some low-dimensional subset/subspace or representation of the data that satisfies some probabilistic modeling assumptions, and then use optimization algorithms to search for this.
 
--- e.g. **Simultaneous inference**: we may wish to test statistical hypotheses about each of many variables and provide some kind of statistical guarantee about the combined family of hypotheses, rather than just a separate statistical guarantee for each one individually. For example, we may wish to control the **family-wise error rate** (FWER) which is the probability of making any type 1 errors.
+-   e.g. **Simultaneous inference**: we may wish to test statistical hypotheses about each of many variables and provide some kind of statistical guarantee about the combined family of hypotheses, rather than just a separate statistical guarantee for each one individually. For example, we may wish to control the **family-wise error rate** (FWER) which is the probability of making any type 1 errors.
 
--- e.g. **Selective inference**: select a subset of the hypotheses and provide some statistical guarantee that applies only to the selected subset. For example, we may wish to control the **false discovery rate** which is the expected proportion of type 1 errors in the selected set.
+-   e.g. **Selective inference**: select a subset of the hypotheses and provide some statistical guarantee that applies only to the selected subset. For example, we may wish to control the **false discovery rate** which is the expected proportion of type 1 errors in the selected set.
 
--- e.g. **High-dimensional (linear) regression**: select a subset of variables to predict a pre-specified outcome variable in a linear model, and provide inferences for the selected predictors using some appropriately modified type of statistical guarantee.
+-   e.g. **High-dimensional (linear) regression**: select a subset of variables to predict a pre-specified outcome variable in a linear model, and provide inferences for the selected predictors using some appropriately modified type of statistical guarantee.
 
--- e.g. **Machine learning**: a variety of predictive approaches which relax the linear modeling assumption in some way, but may be used in combination with some assumptions that allow interpretable inference about some hypotheses concerning parts of the model.
+-   e.g. **Machine learning**: a variety of predictive approaches which relax the linear modeling assumption in some way, but may be used in combination with some assumptions that allow interpretable inference about some hypotheses concerning parts of the model.
 
 Multiple testing
 ================
@@ -119,7 +119,7 @@ rowMeans(replicate(100, experiment(p, mu)))
 
 About 99% of the time we make at least one Type 1 error, and on average we make about 5 Type 1 errors (the expected number of Type 1 errors from the Bin(90, 0.05) distribution is 4.5).
 
-Now let's consider statistical methods to address this problem.
+Now we consider statistical methods to address this problem.
 
 Solution approaches
 -------------------
@@ -143,7 +143,7 @@ $$
 FWER = \\mathbb P\_H \\left( \\bigcup\_{j=1}^p E\_j \\right) \\leq \\sum\_{j=1}^p \\mathbb P\_H(E\_j) \\leq \\sum\_{j=1}^p \\frac{\\alpha}{p} = \\alpha
 $$
 
-These are less than alpha iff original p-values are less than alpha/n
+These are less than alpha iff original p-values are less than alpha/p.
 
 ``` r
 which(p.adjust(pvalues, method = "bonferroni") < 0.05)
@@ -151,9 +151,15 @@ which(p.adjust(pvalues, method = "bonferroni") < 0.05)
 
     ## [1] 1 3 5
 
+``` r
+which(pvalues < 0.05/p)
+```
+
+    ## [1] 1 3 5
+
 #### Holm correction
 
-These are less than alpha iff original p-values are less than alpha/n
+This correction is very similar to Bonferroni-Dunn but has a slight improvement in power (lower Type 2 erro)
 
 ``` r
 which(p.adjust(pvalues, method = "holm") < 0.05)
@@ -161,13 +167,40 @@ which(p.adjust(pvalues, method = "holm") < 0.05)
 
     ## [1] 1 3 5
 
+#### Pros/cons
+
+-   Pro: Because the Bonferroni-Dunn correction is based on the extremely general union bound it works (in the sense of controlling FWER) even if the tests are dependent.
+-   Con: This approach is conservative, especially if the number of tests is large. Effect sizes must be asymptotically larger than $\\sqrt{2\\log(p)}$ to be detected. This means that effects which may be large enough for very high power when tested individually may have very low power when combined with many other tests.
+
+We can break this method, increasing its Type 2 error (reducing its power) by including more tests in the analysis than necessary. If we add many tests of hypotheses which are known *a priori* to be null (for example by generating data randomly) we can make it impossible to detect true non-null effects.
+
 ### False discovery rate
+
+Proposed by Benjamini and Hochberg in 1995, controlling the FDR has become a widespread alternative to the FWER in part because it is less conservative. There are many settings where doing many tests is essentially unavoidable, and controlling the FWER would also make it nearly impossible to discover any non-null effects. Scientists working with genomic data, for example, have adopted the FDR as an alternative which allows them to make more discoveries than the FWER.
+
+-   FDR is less strict than FWER, hence may have more power
+-   Controlling FWER implies control of FDR, but not conversely
+
+Controlling the FDR means that among the tests which are declared significant we expect the proportion of these which are false-discoveries to be low. Mathematically, if *V* is the number of false discoveries (nulls declared to be significant) and *S* the number of true discoveries (non-nulls declared significant), and *R* = *V* + *S* is the number of tests declared significant, then the (observed) *false discovery proportion* is
+
+$$
+\\text{FDP} = \\frac{V}{V+S} = \\frac{V}{R}
+$$
+ Instead of controlling the probability of Type 1 errors, we try to control the expectation of the FDP. For a fixed level *q* &gt; 0 (it is customary to use *q* instead of *α*) we want procedures deciding which tests are significant to satisfy
+
+$$
+\\mathbb E\[\\text{FDP}\] \\leq q
+$$
+
+When our procedures declare a set of the tests significant, we want most (1 − *q* proportion) of these to be truly non-null, i.e. true discoveries.
+
+Let's assume that such a procedure will take *p*-values as inputs, then our first intuition might be to sort these *p*-values and choose the hypotheses with the lowest *p*-values to declare significant. This is actually how many such procedures function, traversing the list of sorted *p*-values from low to high or from high to low, and the next key question to resolve is where to stop. After stopping at some point, the procedure declares all the hypotheses with *p*-values lower than that stopping point to be discoveries.
 
 #### Benjamini-Hochberg correction
 
-Control FDR
+Let *p*<sub>(1)</sub> ≤ *p*<sub>(2)</sub> ≤ ⋯ ≤ *p*<sub>(*p*)</sub> be the sorted list of *p*-values. The Benjamini-Hochberg procedure finds the *largest* *j* such that *p*<sub>(*j*)</sub> ≤ *q**j*/*p*, and rejects the corresponding hypothesis along all the hypotheses with smaller *p*-values than this one.
 
-These are less than alpha iff original p-values are less than alpha/n
+The `p.adjust` function converts the original *p*-values to adjusted versions which are less or equal to *q* if and only if the corresponding hypothesis would be selected as a discovery by the BH procedure. Here's an example with several values of *q*
 
 ``` r
 which(p.adjust(pvalues, method = "BH") < 0.05)
@@ -175,151 +208,112 @@ which(p.adjust(pvalues, method = "BH") < 0.05)
 
     ## [1] 1 2 3 4 5
 
-Simulation
-----------
-
-### FWER
-
 ``` r
-instance <- function(p, sparsity, threshold) {
-  mu <- c(rep(-threshold, sparsity), rep(0, p - sparsity))
-  z <- rnorm(p) + mu
-  pvalues <- pnorm(z)
-  adj_pvalues <- p.adjust(pvalues, method = "bonferroni")
-  discoveries <- which(adj_pvalues < 0.05)
-  true_discoveries <- sum(discoveries <= sparsity)
-  false_discoveries <- sum(discoveries > sparsity)
-  return(c(true_discoveries, false_discoveries))
-}
+which(p.adjust(pvalues, method = "BH") < 0.1)
 ```
 
-``` r
-mc_sample <- replicate(1000, instance(1000, 10, sqrt(2*log(1000))))
-```
+    ## [1] 1 2 3 4 5 9
 
 ``` r
-rowMeans(mc_sample)
+which(p.adjust(pvalues, method = "BH") < 0.2)
 ```
 
-    ## [1] 4.307 0.048
+    ## [1] 1 2 3 4 5 7 8 9
 
-FWER:
+If we are satisfied with allowing as high as 20% of our discoveries to be mistakes, we have much greater power (compared to Bonferroni-Dunn) to discover the truly non-null effects.
+
+#### Benjamini-Yekutieli
+
+The BH procedure requires either independence of the tests or a certain technical kind of dependency. There are some types of dependence which can break the procedure. However, there is a modified version called the Benjamini-Hochberg-Yekutieli or Benjamini-Yekutieli (BY) procedure which controls the FDR under arbitrary dependence at the cost of a loss in power. Compare the discoveries of BH above to BY, with *q* = 0.2 for both:
 
 ``` r
-mean(mc_sample[2, ] > 0)
+which(p.adjust(pvalues, method = "BY") < 0.2)
 ```
 
-    ## [1] 0.047
+    ## [1] 1 2 3 4 5
 
-### FDR
+The BY procedure is still more powerful than controlling the FWER.
 
-``` r
-instance <- function(p, sparsity, threshold) {
-  mu <- c(rep(-threshold, sparsity), rep(0, p - sparsity))
-  z <- rnorm(p) + mu
-  pvalues <- pnorm(z)
-  adj_pvalues <- p.adjust(pvalues, method = "BH")
-  discoveries <- which(adj_pvalues < 0.05)
-  true_discoveries <- sum(discoveries <= sparsity)
-  false_discoveries <- sum(discoveries > sparsity)
-  return(c(true_discoveries, false_discoveries))
-}
-```
+#### Pros/cons
 
-``` r
-mc_sample <- replicate(1000, instance(1000, 10, sqrt(2*log(1000))))
-```
+-   Pro: Controlling FDR allows more discoveries than controlling FWER
+-   Pro: The BH procedure tends to control FDR quite robustly, even when dependence assumptions are violated
+-   Con: The BH procedure may be more conservative under dependence
+-   Con: Since it does not control FWER, this means each of our individual studies will be likely to contain at least one error
 
-``` r
-rowMeans(mc_sample)
-```
-
-    ## [1] 6.243 0.396
-
-Checking FDR?
-
-``` r
-mean(mc_sample[2, ]/pmax(colSums(mc_sample), 1))
-```
-
-    ## [1] 0.0500039
-
-How can we cheat the FDR?
--------------------------
-
-Make the denominator smaller without increasing numerator -- i.e. adding in many true discoveries (known a priori to be true discoveries)
-
-``` r
-p <- 1000
-threshold <- 1.1*sqrt(2*log(p))
-mu <- c(rep(-threshold, 10), rep(0, p - 10))
-z <- rnorm(p) + mu
-pvalues <- pnorm(z)
-```
-
-Control FDR
-
-These are less than alpha iff original p-values are less than alpha/n
+We can "break" the FDR, in the sense of allowing a larger absolute number of false discoveries, by making the denominator of the FDP smaller without increasing the numerator -- i.e. adding in many effects known *a priori* to be true discoveries with very small *p*-values.
 
 ``` r
 pvalues <- c(pvalues, rep(0.00001, 100))
-which(p.adjust(pvalues, method = "BH") < 0.05)
+discoveries <- which(p.adjust(pvalues, method = "BH") < 0.1)
+discoveries[discoveries <= 100]
 ```
 
-    ##   [1]    1    2    3    4    5    6    7    8    9   10   35  251  571  720
-    ##  [15]  803  831  911 1001 1002 1003 1004 1005 1006 1007 1008 1009 1010 1011
-    ##  [29] 1012 1013 1014 1015 1016 1017 1018 1019 1020 1021 1022 1023 1024 1025
-    ##  [43] 1026 1027 1028 1029 1030 1031 1032 1033 1034 1035 1036 1037 1038 1039
-    ##  [57] 1040 1041 1042 1043 1044 1045 1046 1047 1048 1049 1050 1051 1052 1053
-    ##  [71] 1054 1055 1056 1057 1058 1059 1060 1061 1062 1063 1064 1065 1066 1067
-    ##  [85] 1068 1069 1070 1071 1072 1073 1074 1075 1076 1077 1078 1079 1080 1081
-    ##  [99] 1082 1083 1084 1085 1086 1087 1088 1089 1090 1091 1092 1093 1094 1095
-    ## [113] 1096 1097 1098 1099 1100
+    ##  [1]  1  2  3  4  5  7  8  9 41 47 66 71 78
 
-Selective inference for marginal screening
-------------------------------------------
+Ignoring the newly added hypotheses, the FDP among only the original ones is now much higher than *q* = 0.1.
+
+In other words, there is a danger for potentially deceptive use of this method which we must guard against. (Reasoning in a *roughly* subjective Bayesian fashion, if we think someone has included more hypotheses *H*<sup>cheat</sup> with a high prior probability of large effects, then we should have a lower posterior probability for any other new hypotheses discovered in the combined analysis).
+
+> The value of this method is to help focus the scientific process. Ideally the process will continue collecting more data and conducting follow-up studies on the selected hypotheses, eventually ruling out the small(er) proportion of which were false discoveries. And ideally, hypotheses which were not selected in one study may be eligible for follow-up as well, because their failure to be selected could potentially be a false negative.
+
+### Selective inference for marginal screening
+
+The FDR provides a statistical guarantee for the set of selected hypotheses, but it is also possible to ask for selective guarantees that hold on each of the selected hypotheses individually. In this example we consider a selection rule which is different from the BH procedure, a rule which was not designed to provide any statistical guarantee for the selected set. This rule is simple: select effects with *z*-scores above a pre-determined threshold *C*.
+
+We focus on controlling Type 1 errors in a certain sense, so we'll generate data where every effect is null.
 
 ``` r
-C <- 2
+C <- 1
 p <- 10000
 Z <- rnorm(p)
 selected_Z <- selected_Z <- data.frame(Z = Z[Z > C])
 nrow(selected_Z)/p
 ```
 
-    ## [1] 0.0227
+    ## [1] 0.1555
+
+Since every effect is null we expect a proportion of 1 − *Φ*(*C*) of them to fall above the threshold *C*. Now, if we do a 1 sided test against the upper tail alternative for these let's see the proportion of these which yield Type 1 errors:
 
 ``` r
 mean(selected_Z$Z > qnorm(.95))
 ```
 
-    ## [1] 1
+    ## [1] 0.3247588
+
+This is much higher than 5%, an example of selection bias.
+
+#### Conditional (truncated) distribution
 
 ``` r
 truncated_Z_pdf <- function(z) dnorm(z)/pnorm(C, lower.tail = F)
-# plot code hidden
-```
-
-``` r
 maxZ <- max(Z) + .1
+minZ <- min(selected_Z$Z) - .5
 ggplot(selected_Z) +
-  geom_histogram(bins = 50, aes(x = Z, y = ..density..)) + xlim(0, maxZ) +
-  stat_function(fun = truncated_Z_pdf, xlim = c(1, maxZ), linetype  = 2) +
+  geom_histogram(bins = 50, aes(x = Z, y = ..density..)) + xlim(minZ, maxZ) +
+  stat_function(fun = truncated_Z_pdf, xlim = c(minZ, maxZ), linetype  = 2) +
   stat_function(fun = dnorm, linetype  = 1) +
   theme_minimal()
 ```
 
-![](multipletests_files/figure-markdown_github/unnamed-chunk-22-1.png)
+    ## Warning: Removed 1 rows containing missing values (geom_bar).
 
-Cutoff for significance
+![](multipletests_files/figure-markdown_github/unnamed-chunk-13-1.png)
+
+Cutoff for significance (solving for it numerically with the `uniroot` function)
 
 ``` r
-pnorm(3.05, lower.tail = FALSE)/pnorm(C, lower.tail = FALSE)
+trunc_cutoff <- function(C, alpha = 0.05) {
+  TZcdf <- function(z) pnorm(z, lower.tail = FALSE)/pnorm(C, lower.tail = FALSE)
+  uniroot(function(z) TZcdf(z) - alpha, lower = C, upper = 10*C)$root
+}
+cutoff <- trunc_cutoff(C)
+cutoff
 ```
 
-    ## [1] 0.05029451
+    ## [1] 2.411994
 
-Larger than:
+This is larger than:
 
 ``` r
 qnorm(.95)
@@ -327,97 +321,54 @@ qnorm(.95)
 
     ## [1] 1.644854
 
+Meaning the cutoff for significance is more strict. We can check that this larger cutoff does control Type 1 error on the selected effects:
+
 ``` r
-mean(selected_Z$Z > 3.05)
+mean(selected_Z$Z > cutoff)
 ```
 
-    ## [1] 0.05286344
+    ## [1] 0.05659164
 
-This controls the **selective type 1 error**
+This controls the **selective type 1 error**, which is nothing more than the usual Type 1 error applied conditionally on being selected:
 
-Power
------
+$$
+\\mathbb P\_{H\_{0,j}}(\\text{reject } H\_{0,j}|\\text{selecting hypothesis } j \\text{ to test}) \\leq \\alpha
+$$
+
+#### Pros/cons
+
+-   Pro: Corrects selection bias, which may help improve reproducibility for the effects which are declared significant.
+-   Con: The more strict standard for significance means we will have lower power:
 
 ``` r
 C <- 1
 p <- 100
-mu <- c(rep(1, 10), rep(0, p - 10))
+mu <- c(rep(2, 10), rep(0, p - 10))
 Z <- rnorm(p) + mu
 selection_index <- Z > C
 which(selection_index)
 ```
 
-    ##  [1]  1  2  3  4  5  6  7 10 13 24 28 34 37 42 52 53 54 74 76 77 80 83 94
-    ## [24] 95 96
+    ##  [1]  2  3  5  6  7  8  9 11 19 25 27 38 60 63 64 73 79 91 93 96 98
 
 ``` r
 which(Z[selection_index] > qnorm(.95))
 ```
 
-    ##  [1]  1  3  4  5  9 11 12 13 14 22 23 24
-
-Cutoff for significance
+    ## [1]  1  2  4  5  6  7  8 20
 
 ``` r
-pnorm(2.41, lower.tail = FALSE)/pnorm(C, lower.tail = FALSE)
+which(Z[selection_index] > trunc_cutoff(C))
 ```
 
-    ## [1] 0.05027416
+    ## [1] 1 5 6 7
+
+### Bonferroni correction after selection
 
 ``` r
-which(Z[selection_index] > 2.41)
+P_selected <- length(selection_index)
+pvalues <- pnorm(Z, lower.tail = FALSE)
+which(pvalues[selection_index] < 0.05/P_selected)
 ```
 
-    ## [1] 11 12 23
-
-Testing the non-selected effects to determine if we should do any follow-up on them in future studies
-
-``` r
-truncated_Z_pdf <- function(z) dnorm(z)/pnorm(C)
-# plot code hidden
-```
-
-``` r
-unselected_Z <- selected_Z <- data.frame(Z = Z[Z < C])
-maxZ <- min(Z) - .1
-ggplot(unselected_Z) +
-  geom_histogram(bins = 20, aes(x = Z, y = ..density..)) + xlim(maxZ, max(Z) + .1) +
-  stat_function(fun = truncated_Z_pdf, xlim = c(maxZ, C), linetype  = 2) +
-  stat_function(fun = dnorm, linetype  = 1) +
-  theme_minimal()
-```
-
-    ## Warning: Removed 1 rows containing missing values (geom_bar).
-
-![](multipletests_files/figure-markdown_github/unnamed-chunk-31-1.png)
-
-``` r
-pnorm(.84)/pnorm(C)
-```
-
-    ## [1] 0.9503189
-
-``` r
-which(unselected_Z > .84)
-```
-
-    ## [1] 59 61
-
-Bonferroni correction after selection
--------------------------------------
-
-``` r
-C <- 2
-p <- 10000
-Z <- rnorm(p)
-selected_Z <- selected_Z <- data.frame(Z = Z[Z > C])
-nrow(selected_Z)/p
-```
-
-    ## [1] 0.0239
-
-``` r
-mean(selected_Z$Z > qnorm(.95))
-```
-
-    ## [1] 1
+    ## integer(0)
